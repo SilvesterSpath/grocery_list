@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'grocery_app_v1';
+const THEME_KEY = 'grocery_app_theme_v1';
 
 const defaultLists = {
   'Weekly Essentials': [
@@ -65,6 +66,23 @@ function saveState(state) {
   }
 }
 
+function loadTheme() {
+  try {
+    const raw = localStorage.getItem(THEME_KEY);
+    return raw === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+function saveTheme(theme) {
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    /* ignore storage write failures */
+  }
+}
+
 let idCounter = Date.now();
 function newId() {
   return `item_${idCounter++}`;
@@ -75,6 +93,7 @@ function makeItem(name) {
 }
 
 export default function GroceryApp() {
+  const [theme, setTheme] = useState(loadTheme);
   const [items, setItems] = useState(() => {
     const saved = loadState();
     return saved?.items ?? [];
@@ -92,6 +111,11 @@ export default function GroceryApp() {
   const [dragOver, setDragOver] = useState(null);
   const [activeTab, setActiveTab] = useState('list'); // list | presets
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    saveTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     saveState({ items, presets });
@@ -207,6 +231,18 @@ export default function GroceryApp() {
             <span style={styles.logoText}>Pantry</span>
           </div>
           <div style={styles.headerStats}>
+            <button
+              type='button'
+              style={styles.themeBtn}
+              onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? 'Light' : 'Dark'}
+              <span aria-hidden='true' style={styles.themeIcon}>
+                {theme === 'dark' ? '☀︎' : '☾'}
+              </span>
+            </button>
             {boughtCount > 0 && (
               <span style={styles.badge}>{boughtCount} in cart</span>
             )}
@@ -606,12 +642,53 @@ function ItemRow({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const globalCSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,650;0,750;1,500&family=DM+Sans:wght@400;500;600&display=swap');
+  :root{
+    --bg: #fbf7f0;
+    --surface: #ffffff;
+    --surface-2: #f4efe6;
+    --text: #241d12;
+    --muted: #8c7a63;
+    --muted-2: #b6a894;
+    --border: #efe7dc;
+    --shadow: 0 2px 14px rgba(36, 29, 18, 0.08);
+    --shadow-strong: 0 20px 70px rgba(36, 29, 18, 0.22);
+    --accent: #e8783a;
+    --accent-2: #ffb68b;
+    --success: #22c55e;
+    --danger: #dc2626;
+    --danger-border: #fecaca;
+    --ring: rgba(232, 120, 58, 0.28);
+  }
+
+  :root[data-theme="dark"]{
+    --bg: #0b0f14;
+    --surface: #111827;
+    --surface-2: #0f172a;
+    --text: #e5e7eb;
+    --muted: #b3b9c6;
+    --muted-2: #7d8698;
+    --border: #1f2937;
+    --shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+    --shadow-strong: 0 32px 90px rgba(0, 0, 0, 0.75);
+    --accent: #ff7a2f;
+    --accent-2: #ffd1b6;
+    --success: #34d399;
+    --danger: #f87171;
+    --danger-border: rgba(248, 113, 113, 0.38);
+    --ring: rgba(255, 122, 47, 0.35);
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #faf7f2; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--text); }
+  ::selection{ background: var(--ring); }
+  a, button, input { color: inherit; }
+  button{ -webkit-tap-highlight-color: transparent; }
+  input::placeholder{ color: color-mix(in srgb, var(--muted) 70%, transparent); }
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #d4c9b5; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 40%, transparent); border-radius: 4px; }
 
   .item-row-enter { opacity: 0; transform: translateY(-6px); }
   .item-row-enter-active { opacity: 1; transform: none; transition: all 0.2s; }
@@ -621,27 +698,28 @@ const styles = {
   root: {
     fontFamily: "'DM Sans', sans-serif",
     minHeight: '100vh',
-    background: '#faf7f2',
-    color: '#2c2416',
-    maxWidth: 540,
+    background: 'var(--bg)',
+    color: 'var(--text)',
+    maxWidth: 620,
     margin: '0 auto',
     paddingBottom: 60,
   },
 
   header: {
-    background: '#fff',
-    borderBottom: '2px solid #ede8df',
+    background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
+    borderBottom: '1px solid var(--border)',
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    boxShadow: '0 2px 12px rgba(44,36,22,0.06)',
+    boxShadow: 'var(--shadow)',
+    backdropFilter: 'saturate(130%) blur(10px)',
   },
 
   headerInner: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '14px 20px 10px',
+    padding: '14px 18px 10px',
   },
 
   logo: {
@@ -657,8 +735,8 @@ const styles = {
   logoText: {
     fontFamily: "'Fraunces', serif",
     fontSize: 24,
-    fontWeight: 700,
-    color: '#2c2416',
+    fontWeight: 750,
+    color: 'var(--text)',
     letterSpacing: '-0.5px',
   },
 
@@ -668,19 +746,40 @@ const styles = {
     alignItems: 'center',
   },
 
+  themeBtn: {
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '6px 10px',
+    borderRadius: 999,
+    border: '1px solid var(--border)',
+    background: 'color-mix(in srgb, var(--surface) 75%, var(--surface-2))',
+    boxShadow: '0 1px 0 color-mix(in srgb, var(--text) 8%, transparent)',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    transition: 'transform 0.08s, background 0.15s, border-color 0.15s',
+  },
+
+  themeIcon: {
+    fontSize: 13,
+    opacity: 0.9,
+  },
+
   badge: {
-    background: '#dcfce7',
-    color: '#15803d',
+    background: 'color-mix(in srgb, var(--success) 20%, var(--surface))',
+    color: 'color-mix(in srgb, var(--success) 72%, var(--text))',
     fontSize: 11,
     fontWeight: 600,
     padding: '3px 8px',
     borderRadius: 20,
-    border: '1px solid #bbf7d0',
+    border: '1px solid color-mix(in srgb, var(--success) 35%, var(--border))',
   },
 
   totalBadge: {
-    background: '#f1ede6',
-    color: '#7c6a52',
+    background: 'var(--surface-2)',
+    color: 'var(--muted)',
     fontSize: 11,
     fontWeight: 600,
     padding: '3px 8px',
@@ -689,7 +788,7 @@ const styles = {
 
   tabs: {
     display: 'flex',
-    padding: '0 20px',
+    padding: '0 14px',
     gap: 4,
   },
 
@@ -701,15 +800,15 @@ const styles = {
     border: 'none',
     background: 'none',
     cursor: 'pointer',
-    color: '#9a8870',
+    color: 'var(--muted)',
     borderBottom: '2px solid transparent',
     transition: 'all 0.15s',
     marginBottom: -2,
   },
 
   tabActive: {
-    color: '#2c2416',
-    borderBottomColor: '#e8783a',
+    color: 'var(--text)',
+    borderBottomColor: 'var(--accent)',
     fontWeight: 600,
   },
 
@@ -728,18 +827,18 @@ const styles = {
     fontFamily: "'DM Sans', sans-serif",
     fontSize: 15,
     padding: '10px 14px',
-    border: '2px solid #ede8df',
+    border: '1px solid var(--border)',
     borderRadius: 10,
-    background: '#fff',
-    color: '#2c2416',
+    background: 'var(--surface)',
+    color: 'var(--text)',
     outline: 'none',
-    transition: 'border-color 0.15s',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
   },
 
   addBtn: {
     width: 44,
     height: 44,
-    background: '#e8783a',
+    background: 'var(--accent)',
     color: '#fff',
     border: 'none',
     borderRadius: 10,
@@ -765,17 +864,17 @@ const styles = {
     fontSize: 12,
     fontWeight: 500,
     padding: '5px 10px',
-    border: '1.5px solid #ede8df',
+    border: '1px solid var(--border)',
     borderRadius: 8,
-    background: '#fff',
-    color: '#7c6a52',
+    background: 'var(--surface)',
+    color: 'var(--muted)',
     cursor: 'pointer',
     transition: 'all 0.15s',
   },
 
   dangerBtn: {
-    color: '#dc2626',
-    borderColor: '#fecaca',
+    color: 'var(--danger)',
+    borderColor: 'var(--danger-border)',
   },
 
   legend: {
@@ -783,7 +882,7 @@ const styles = {
     gap: 14,
     marginBottom: 12,
     fontSize: 11,
-    color: '#9a8870',
+    color: 'var(--muted)',
     flexWrap: 'wrap',
   },
 
@@ -819,7 +918,7 @@ const styles = {
     fontWeight: 600,
     letterSpacing: '0.06em',
     textTransform: 'uppercase',
-    color: '#9a8870',
+    color: 'var(--muted)',
     marginBottom: 6,
     display: 'flex',
     alignItems: 'center',
@@ -839,8 +938,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    background: '#fff',
-    border: '1.5px solid #ede8df',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 10,
     padding: '9px 10px',
     marginBottom: 6,
@@ -855,13 +954,13 @@ const styles = {
   },
 
   itemDragOver: {
-    borderColor: '#e8783a',
-    boxShadow: '0 0 0 2px rgba(232,120,58,0.2)',
+    borderColor: 'var(--accent)',
+    boxShadow: '0 0 0 3px var(--ring)',
   },
 
   itemBought: {
-    background: '#f9fafb',
-    borderColor: '#f1f5f9',
+    background: 'color-mix(in srgb, var(--surface) 75%, var(--surface-2))',
+    borderColor: 'var(--border)',
   },
 
   dragHandle: {
@@ -886,9 +985,9 @@ const styles = {
   customCheck: {
     width: 18,
     height: 18,
-    border: '1.5px solid #d1d5db',
+    border: '1px solid color-mix(in srgb, var(--muted) 45%, var(--border))',
     borderRadius: 5,
-    background: '#fff',
+    background: 'var(--surface)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -897,8 +996,8 @@ const styles = {
   },
 
   customCheckChecked: {
-    background: '#22c55e',
-    borderColor: '#22c55e',
+    background: 'var(--success)',
+    borderColor: 'var(--success)',
   },
 
   checkMark: {
@@ -912,7 +1011,7 @@ const styles = {
     flex: 1,
     fontSize: 14,
     fontWeight: 500,
-    color: '#2c2416',
+    color: 'var(--text)',
     cursor: 'pointer',
     wordBreak: 'break-word',
     lineHeight: 1.3,
@@ -920,11 +1019,11 @@ const styles = {
 
   itemNameBought: {
     textDecoration: 'line-through',
-    color: '#a0a0a0',
+    color: 'color-mix(in srgb, var(--muted) 65%, var(--text))',
   },
 
   itemNameHave: {
-    color: '#9a8870',
+    color: 'var(--muted)',
   },
 
   editInput: {
@@ -933,10 +1032,10 @@ const styles = {
     fontSize: 14,
     fontWeight: 500,
     padding: '2px 6px',
-    border: '1.5px solid #e8783a',
+    border: '1px solid var(--accent)',
     borderRadius: 6,
-    background: '#fff',
-    color: '#2c2416',
+    background: 'var(--surface)',
+    color: 'var(--text)',
     outline: 'none',
   },
 
@@ -962,7 +1061,7 @@ const styles = {
   },
 
   toggleOff: {
-    background: '#cbd5e1',
+    background: 'color-mix(in srgb, var(--muted) 35%, var(--border))',
     justifyContent: 'flex-start',
   },
 
@@ -970,8 +1069,8 @@ const styles = {
     width: 14,
     height: 14,
     borderRadius: '50%',
-    background: '#fff',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+    background: 'var(--surface)',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.22)',
     transition: 'all 0.2s',
     flexShrink: 0,
   },
@@ -982,7 +1081,7 @@ const styles = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#c8bfb2',
+    color: 'color-mix(in srgb, var(--muted) 65%, var(--text))',
     fontSize: 14,
     padding: '2px 4px',
     borderRadius: 4,
@@ -1009,13 +1108,13 @@ const styles = {
     fontFamily: "'Fraunces', serif",
     fontSize: 20,
     fontWeight: 600,
-    color: '#7c6a52',
+    color: 'var(--muted)',
     marginBottom: 6,
   },
 
   emptyHint: {
     fontSize: 13,
-    color: '#b5a898',
+    color: 'var(--muted-2)',
   },
 
   // Presets tab
@@ -1025,13 +1124,13 @@ const styles = {
 
   presetsHint: {
     fontSize: 13,
-    color: '#9a8870',
+    color: 'var(--muted)',
     lineHeight: 1.5,
   },
 
   presetCard: {
-    background: '#fff',
-    border: '1.5px solid #ede8df',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 12,
     padding: '14px 14px 10px',
     marginBottom: 10,
@@ -1049,13 +1148,13 @@ const styles = {
     fontFamily: "'Fraunces', serif",
     fontSize: 16,
     fontWeight: 600,
-    color: '#2c2416',
+    color: 'var(--text)',
     marginBottom: 2,
   },
 
   presetCardCount: {
     fontSize: 12,
-    color: '#9a8870',
+    color: 'var(--muted)',
   },
 
   presetCardActions: {
@@ -1072,7 +1171,7 @@ const styles = {
     padding: '6px 12px',
     border: 'none',
     borderRadius: 8,
-    background: '#e8783a',
+    background: 'var(--accent)',
     color: '#fff',
     cursor: 'pointer',
     transition: 'background 0.15s',
@@ -1082,10 +1181,10 @@ const styles = {
     fontFamily: "'DM Sans', sans-serif",
     fontSize: 12,
     padding: '6px 8px',
-    border: '1.5px solid #fecaca',
+    border: '1px solid var(--danger-border)',
     borderRadius: 8,
-    background: '#fff',
-    color: '#dc2626',
+    background: 'var(--surface)',
+    color: 'var(--danger)',
     cursor: 'pointer',
   },
 
@@ -1100,8 +1199,8 @@ const styles = {
     fontWeight: 500,
     padding: '3px 8px',
     borderRadius: 20,
-    background: '#f1ede6',
-    color: '#7c6a52',
+    background: 'var(--surface-2)',
+    color: 'var(--muted)',
   },
 
   tagMore: {
@@ -1109,8 +1208,8 @@ const styles = {
     fontWeight: 500,
     padding: '3px 8px',
     borderRadius: 20,
-    background: '#ede8df',
-    color: '#9a8870',
+    background: 'color-mix(in srgb, var(--surface-2) 70%, var(--border))',
+    color: 'var(--muted)',
   },
 
   // Modal
@@ -1126,12 +1225,12 @@ const styles = {
   },
 
   modal: {
-    background: '#fff',
+    background: 'var(--surface)',
     borderRadius: 14,
     padding: 24,
     width: '100%',
     maxWidth: 360,
-    boxShadow: '0 20px 60px rgba(44,36,22,0.2)',
+    boxShadow: 'var(--shadow-strong)',
   },
 
   modalTitle: {
@@ -1139,19 +1238,20 @@ const styles = {
     fontSize: 18,
     fontWeight: 600,
     marginBottom: 14,
-    color: '#2c2416',
+    color: 'var(--text)',
   },
 
   modalInput: {
     fontFamily: "'DM Sans', sans-serif",
     fontSize: 15,
     padding: '10px 14px',
-    border: '2px solid #ede8df',
+    border: '1px solid var(--border)',
     borderRadius: 10,
     width: '100%',
     marginBottom: 14,
-    color: '#2c2416',
+    color: 'var(--text)',
     outline: 'none',
+    background: 'var(--surface)',
   },
 
   modalBtns: {
@@ -1165,10 +1265,10 @@ const styles = {
     fontSize: 13,
     fontWeight: 500,
     padding: '8px 16px',
-    border: '1.5px solid #ede8df',
+    border: '1px solid var(--border)',
     borderRadius: 8,
-    background: '#fff',
-    color: '#7c6a52',
+    background: 'var(--surface)',
+    color: 'var(--muted)',
     cursor: 'pointer',
   },
 
@@ -1179,7 +1279,7 @@ const styles = {
     padding: '8px 16px',
     border: 'none',
     borderRadius: 8,
-    background: '#e8783a',
+    background: 'var(--accent)',
     color: '#fff',
     cursor: 'pointer',
   },
