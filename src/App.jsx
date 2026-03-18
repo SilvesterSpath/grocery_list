@@ -1009,7 +1009,7 @@ const styles = {
 
   itemName: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 21,
     fontWeight: 500,
     color: 'var(--text)',
     cursor: 'pointer',
@@ -1195,7 +1195,7 @@ const styles = {
   },
 
   tag: {
-    fontSize: 11,
+    fontSize: 17,
     fontWeight: 500,
     padding: '3px 8px',
     borderRadius: 20,
@@ -1204,7 +1204,7 @@ const styles = {
   },
 
   tagMore: {
-    fontSize: 11,
+    fontSize: 17,
     fontWeight: 500,
     padding: '3px 8px',
     borderRadius: 20,
