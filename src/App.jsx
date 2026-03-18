@@ -3,48 +3,134 @@ import { useEffect, useRef, useState } from 'react';
 const STORAGE_KEY = 'grocery_app_v1';
 const THEME_KEY = 'grocery_app_theme_v1';
 
+const KNOWN_TRANSLATIONS = {
+  presetNames: {
+    'Weekly Essentials': 'Heti alapok',
+    'Fruits & Veggies': 'Gyümölcsök és zöldségek',
+    'Baking Essentials': 'Sütési alapanyagok',
+    'Cleaning Supplies': 'Takarítószerek',
+  },
+  items: {
+    Milk: 'Tej',
+    Eggs: 'Tojás',
+    Bread: 'Kenyér',
+    Butter: 'Vaj',
+    Yogurt: 'Joghurt',
+    Cheese: 'Sajt',
+    'Chicken breast': 'Csirkemell',
+    Pasta: 'Tészta',
+    Rice: 'Rizs',
+    'Olive oil': 'Olívaolaj',
+    Apples: 'Alma',
+    Bananas: 'Banán',
+    Tomatoes: 'Paradicsom',
+    Spinach: 'Spenót',
+    Carrots: 'Répa',
+    Onions: 'Hagyma',
+    Garlic: 'Fokhagyma',
+    Lemons: 'Citrom',
+    Broccoli: 'Brokkoli',
+    Avocados: 'Avokádó',
+    Flour: 'Liszt',
+    Sugar: 'Cukor',
+    'Baking powder': 'Sütőpor',
+    'Vanilla extract': 'Vaníliakivonat',
+    'Cocoa powder': 'Kakaópor',
+    Honey: 'Méz',
+    Oats: 'Zabpehely',
+    Almonds: 'Mandula',
+    'Dish soap': 'Mosogatószer',
+    'Laundry detergent': 'Mosószer',
+    Sponges: 'Szivacs',
+    'Trash bags': 'Szemeteszsák',
+    'Paper towels': 'Papírtörlő',
+    'Bleach spray': 'Fertőtlenítő spray',
+  },
+};
+
+function translateKnown(text) {
+  return KNOWN_TRANSLATIONS.items[text] ?? text;
+}
+
+function translateKnownPresetName(name) {
+  return KNOWN_TRANSLATIONS.presetNames[name] ?? name;
+}
+
+function translateKnownItemsInList(items) {
+  if (!Array.isArray(items) || items.length === 0) return items ?? [];
+  let changed = false;
+  const next = items.map((i) => {
+    const translated = translateKnown(i.name);
+    if (translated !== i.name) changed = true;
+    return translated === i.name ? i : { ...i, name: translated };
+  });
+  return changed ? next : items;
+}
+
+function translateKnownPresets(presets) {
+  if (!presets || typeof presets !== 'object') return presets ?? {};
+  let changed = false;
+  const entries = Object.entries(presets);
+  const next = {};
+  for (const [name, itemNames] of entries) {
+    const translatedName = translateKnownPresetName(name);
+    const translatedItems = Array.isArray(itemNames)
+      ? itemNames.map(translateKnown)
+      : itemNames;
+    if (translatedName !== name) changed = true;
+    if (
+      Array.isArray(itemNames) &&
+      translatedItems.some((v, idx) => v !== itemNames[idx])
+    ) {
+      changed = true;
+    }
+    next[translatedName] = translatedItems;
+  }
+  return changed ? next : presets;
+}
+
 const defaultLists = {
-  'Weekly Essentials': [
-    'Milk',
-    'Eggs',
-    'Bread',
-    'Butter',
-    'Yogurt',
-    'Cheese',
-    'Chicken breast',
-    'Pasta',
-    'Rice',
-    'Olive oil',
+  'Heti alapok': [
+    'Tej',
+    'Tojás',
+    'Kenyér',
+    'Vaj',
+    'Joghurt',
+    'Sajt',
+    'Csirkemell',
+    'Tészta',
+    'Rizs',
+    'Olívaolaj',
   ],
-  'Fruits & Veggies': [
-    'Apples',
-    'Bananas',
-    'Tomatoes',
-    'Spinach',
-    'Carrots',
-    'Onions',
-    'Garlic',
-    'Lemons',
-    'Broccoli',
-    'Avocados',
+  'Gyümölcsök és zöldségek': [
+    'Alma',
+    'Banán',
+    'Paradicsom',
+    'Spenót',
+    'Répa',
+    'Hagyma',
+    'Fokhagyma',
+    'Citrom',
+    'Brokkoli',
+    'Avokádó',
   ],
-  'Baking Essentials': [
-    'Flour',
-    'Sugar',
-    'Baking powder',
-    'Vanilla extract',
-    'Cocoa powder',
-    'Honey',
-    'Oats',
-    'Almonds',
+  'Sütési alapanyagok': [
+    'Liszt',
+    'Cukor',
+    'Sütőpor',
+    'Vaníliakivonat',
+    'Kakaópor',
+    'Méz',
+    'Zabpehely',
+    'Mandula',
   ],
-  'Cleaning Supplies': [
-    'Dish soap',
-    'Laundry detergent',
-    'Sponges',
-    'Trash bags',
-    'Paper towels',
-    'Bleach spray',
+  'Takarítószerek': [
+    'Mosogatószer',
+    'Mosószer',
+    'Szivacs',
+    'Szemeteszsák',
+    'Papírtörlő',
+    'Fertőtlenítő spray',
   ],
 };
 
@@ -96,11 +182,11 @@ export default function GroceryApp() {
   const [theme, setTheme] = useState(loadTheme);
   const [items, setItems] = useState(() => {
     const saved = loadState();
-    return saved?.items ?? [];
+    return translateKnownItemsInList(saved?.items ?? []);
   });
   const [presets, setPresets] = useState(() => {
     const saved = loadState();
-    return saved?.presets ?? defaultLists;
+    return translateKnownPresets(saved?.presets ?? defaultLists);
   });
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
@@ -228,25 +314,25 @@ export default function GroceryApp() {
         <div style={styles.headerInner}>
           <div style={styles.logo}>
             <span style={styles.logoIcon}>🛒</span>
-            <span style={styles.logoText}>Pantry</span>
+            <span style={styles.logoText}>Kamra</span>
           </div>
           <div style={styles.headerStats}>
             <button
               type='button'
               style={styles.themeBtn}
               onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              aria-label={`Váltás ${theme === 'dark' ? 'világos' : 'sötét'} módra`}
+              title={`Váltás ${theme === 'dark' ? 'világos' : 'sötét'} módra`}
             >
-              {theme === 'dark' ? 'Light' : 'Dark'}
+              {theme === 'dark' ? 'Világos' : 'Sötét'}
               <span aria-hidden='true' style={styles.themeIcon}>
                 {theme === 'dark' ? '☀︎' : '☾'}
               </span>
             </button>
             {boughtCount > 0 && (
-              <span style={styles.badge}>{boughtCount} in cart</span>
+              <span style={styles.badge}>{boughtCount} a kosárban</span>
             )}
-            <span style={styles.totalBadge}>{items.length} items</span>
+            <span style={styles.totalBadge}>{items.length} tétel</span>
           </div>
         </div>
 
@@ -259,7 +345,7 @@ export default function GroceryApp() {
             }}
             onClick={() => setActiveTab('list')}
           >
-            My List
+            Listám
           </button>
           <button
             style={{
@@ -268,7 +354,7 @@ export default function GroceryApp() {
             }}
             onClick={() => setActiveTab('presets')}
           >
-            Saved Lists
+            Mentett listák
           </button>
         </div>
       </header>
@@ -282,7 +368,7 @@ export default function GroceryApp() {
               <input
                 ref={inputRef}
                 style={styles.addInput}
-                placeholder='Add item…'
+                placeholder='Tétel hozzáadása…'
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addItem()}
@@ -299,18 +385,18 @@ export default function GroceryApp() {
                   style={styles.ghostBtn}
                   onClick={() => setShowSavePreset(true)}
                 >
-                  💾 Save as list
+                  💾 Mentés listaként
                 </button>
                 {boughtCount > 0 && (
                   <button style={styles.ghostBtn} onClick={clearBought}>
-                    🧹 Clear bought
+                    🧹 Megvett törlése
                   </button>
                 )}
                 <button
                   style={{ ...styles.ghostBtn, ...styles.dangerBtn }}
                   onClick={clearAll}
                 >
-                  🗑 Clear all
+                  🗑 Mind törlése
                 </button>
               </div>
             )}
@@ -322,11 +408,11 @@ export default function GroceryApp() {
                 onClick={() => setShowSavePreset(false)}
               >
                 <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                  <div style={styles.modalTitle}>Save current list</div>
+                  <div style={styles.modalTitle}>Aktuális lista mentése</div>
                   <input
                     style={styles.modalInput}
                     autoFocus
-                    placeholder='List name…'
+                    placeholder='Lista neve…'
                     value={newPresetName}
                     onChange={(e) => setNewPresetName(e.target.value)}
                     onKeyDown={(e) => {
@@ -339,10 +425,10 @@ export default function GroceryApp() {
                       style={styles.modalCancel}
                       onClick={() => setShowSavePreset(false)}
                     >
-                      Cancel
+                      Mégse
                     </button>
                     <button style={styles.modalSave} onClick={saveAsPreset}>
-                      Save
+                      Mentés
                     </button>
                   </div>
                 </div>
@@ -354,15 +440,15 @@ export default function GroceryApp() {
               <div style={styles.legend}>
                 <span style={styles.legendItem}>
                   <span style={styles.legendDot({ color: '#22c55e' })} />
-                  Need to buy
+                  Megvenni
                 </span>
                 <span style={styles.legendItem}>
                   <span style={styles.legendDot({ color: '#94a3b8' })} />
-                  Already have
+                  Már megvan
                 </span>
                 <span style={styles.legendItem}>
                   <span style={{ ...styles.legendCheck }} />
-                  Bought in store
+                  Megvéve
                 </span>
               </div>
             )}
@@ -371,9 +457,9 @@ export default function GroceryApp() {
             {items.length === 0 ? (
               <div style={styles.empty}>
                 <div style={styles.emptyIcon}>🥕</div>
-                <div style={styles.emptyText}>Your list is empty</div>
+                <div style={styles.emptyText}>A listád üres</div>
                 <div style={styles.emptyHint}>
-                  Add items above or load a saved list
+                  Adj hozzá tételeket fent, vagy tölts be egy mentett listát
                 </div>
               </div>
             ) : (
@@ -382,7 +468,7 @@ export default function GroceryApp() {
                   <section style={styles.section}>
                     <div style={styles.sectionLabel}>
                       <span style={styles.sectionDot({ color: '#22c55e' })} />
-                      To buy ({neededItems.length})
+                      Megvenni ({neededItems.length})
                     </div>
                     {neededItems.map((item) => (
                       <ItemRow
@@ -412,7 +498,7 @@ export default function GroceryApp() {
                   <section style={styles.section}>
                     <div style={styles.sectionLabel}>
                       <span style={styles.sectionDot({ color: '#94a3b8' })} />
-                      Already have ({haveItems.length})
+                      Már megvan ({haveItems.length})
                     </div>
                     {haveItems.map((item) => (
                       <ItemRow
@@ -446,15 +532,15 @@ export default function GroceryApp() {
           <div>
             <div style={styles.presetsHeader}>
               <p style={styles.presetsHint}>
-                Pick a saved list to load all its items into your current list.
+                Válassz egy mentett listát, és töltsd be a tételeit a jelenlegi listádba.
               </p>
             </div>
             {Object.keys(presets).length === 0 ? (
               <div style={styles.empty}>
                 <div style={styles.emptyIcon}>📋</div>
-                <div style={styles.emptyText}>No saved lists yet</div>
+                <div style={styles.emptyText}>Még nincs mentett lista</div>
                 <div style={styles.emptyHint}>
-                  Build a list and save it for later
+                  Állíts össze egy listát, és mentsd el későbbre
                 </div>
               </div>
             ) : (
@@ -464,7 +550,7 @@ export default function GroceryApp() {
                     <div>
                       <div style={styles.presetCardName}>{name}</div>
                       <div style={styles.presetCardCount}>
-                        {itemNames.length} items
+                        {itemNames.length} tétel
                       </div>
                     </div>
                     <div style={styles.presetCardActions}>
@@ -472,7 +558,7 @@ export default function GroceryApp() {
                         style={styles.presetLoadBtn}
                         onClick={() => addFromPreset(name)}
                       >
-                        Load into list
+                        Betöltés a listába
                       </button>
                       <button
                         style={styles.presetDeleteBtn}
@@ -544,7 +630,7 @@ function ItemRow({
       }}
     >
       {/* Drag handle */}
-      <span style={styles.dragHandle} title='Drag to reorder'>
+      <span style={styles.dragHandle} title='Húzd az átrendezéshez'>
         ⠿
       </span>
 
@@ -584,7 +670,7 @@ function ItemRow({
             ...(!item.needed ? styles.itemNameHave : {}),
           }}
           onDoubleClick={() => onStartEdit(item)}
-          title='Double-click to edit'
+          title='Dupla kattintás a szerkesztéshez'
         >
           {item.name}
         </span>
@@ -593,7 +679,7 @@ function ItemRow({
       {/* Needed/Have toggle */}
       <label
         style={styles.toggleLabel}
-        title={item.needed ? 'Mark as already have' : 'Mark as needed'}
+        title={item.needed ? 'Megjelölés: már megvan' : 'Megjelölés: szükséges'}
       >
         <input
           type='checkbox'
@@ -621,7 +707,7 @@ function ItemRow({
         <button
           style={styles.iconBtn}
           onClick={() => onStartEdit(item)}
-          title='Edit name'
+          title='Név szerkesztése'
         >
           ✎
         </button>
@@ -631,7 +717,7 @@ function ItemRow({
       <button
         style={{ ...styles.iconBtn, ...styles.deleteBtn }}
         onClick={() => onDelete(item.id)}
-        title='Delete'
+        title='Törlés'
       >
         ✕
       </button>
